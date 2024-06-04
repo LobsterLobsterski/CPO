@@ -8,7 +8,11 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
 
-
+#hypers
+batch_size = 4 *4
+epochs = 40
+lr = 1e-3 *4 
+  
 # dataset has PILImage images of range [0, 1]. 
 # We transform them to Tensors of normalized range [-1, 1]
 transform = transforms.Compose(
@@ -22,6 +26,7 @@ training_data = datasets.CIFAR10(
     download=True,
     transform=transform,
 )
+
 test_data = datasets.CIFAR10(
     root="data",
     train=False,
@@ -29,17 +34,13 @@ test_data = datasets.CIFAR10(
     transform=transform,
 )
 
-batch_size = 4
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
-epochs = 80
-  
 # Get cpu, gpu or mps device for training.
 device = "cuda" if torch.cuda.is_available()else "mps" if torch.backends.mps.is_available() else "cpu"
 print(f"Using {device} device")
 
-classes = ('plane', 'car', 'bird', 'cat',
-           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+classes = 'plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'
 
 def imshow(img):
     img = img / 2 + 0.5  # denormalize
@@ -59,20 +60,21 @@ class ConvNet(nn.Module):
     def __init__(self):
         super(ConvNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
+        self.pool = nn.MaxPool2d(2, 2) #2x2 with step of 2
         self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)#flattened input fully conected layer
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)#10 classes
 
     def forward(self, x):
-        # -> n, 3, 32, 32
-        x = self.pool(F.relu(self.conv1(x)))  # -> n, 6, 14, 14
-        x = self.pool(F.relu(self.conv2(x)))  # -> n, 16, 5, 5
-        x = x.view(-1, 16 * 5 * 5)            # -> n, 400
-        x = F.relu(self.fc1(x))               # -> n, 120
-        x = F.relu(self.fc2(x))               # -> n, 84
-        x = self.fc3(x)                       # -> n, 10
+        # -> n, 3, 32, 32 (color, sizex, sizey)
+        x = self.pool(F.relu(self.conv1(x)))  # conv + relu + pooling
+        x = self.pool(F.relu(self.conv2(x)))  # conv + relu + pooling
+
+        x = x.view(-1, 16 * 5 * 5)            # -> n, 400, flatten
+        x = F.relu(self.fc1(x))               
+        x = F.relu(self.fc2(x))               
+        x = self.fc3(x)                       
         return x
 
 
@@ -80,7 +82,7 @@ model = ConvNet().to(device)
 print('model', model)
 
 loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+optimizer = torch.optim.SGD(model.parameters(), lr=lr)
 
 def train(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
